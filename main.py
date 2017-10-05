@@ -53,7 +53,6 @@ x     = np.array(cities)[:, 1]
 y     = np.array(cities)[:, 2]
 start = np.array(cities)[:, 3]
 end   = np.array(cities)[:, 4]
-#group = np.array(cities)[:, 5]
 
 newcoloumn=[]
 temp=[]
@@ -69,9 +68,14 @@ for row in cities:
 
 group=np.array(newcoloumn)
 
-
 colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 matris = np.column_stack((id,x,y,start,end,group))
+#her zaman penceresinin toplam süresini tutar
+twd_size=np.max(group)+1
+
+time_window_durations  =np.zeros(twd_size, dtype = object)
+
+
 
 for i in range(len(temp)):
     indices = group == i
@@ -80,6 +84,7 @@ for i in range(len(temp)):
     path = tsp(distances)
     time=km_to_second(distances)
     print(path)
+    time_window_durations[i]=path_duration(time,path,10)
     print("Toplam süre:"+"  "+str(path_duration(time,path,10))+" dk")
 
     plt.plot(data[path, 1], data[path, 2], list(colors.keys())[i])
@@ -91,4 +96,10 @@ plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolo
 plt.show()
 
 
-#birleştirme
+#birleştirme öncesi zaman periyotlarını sıralayıp gruplama
+print(time_window_durations)
+tw_groups = np.column_stack((start,end,group))
+tw_order=np.lexsort((tw_groups[:,1],tw_groups[:,0]))
+tw_groups=np.unique(tw_groups[tw_order], axis=0)
+print(tw_groups)
+
