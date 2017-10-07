@@ -47,6 +47,21 @@ def path_duration(time_matrix,path,delivery_time):
     return duration
 
 
+def which_outer_points(tw1,tw2,matris):
+
+    tw11 = np.array(([matris[int(tw1[0]),1] ,matris[int(tw1[0]) ,2]]))
+    tw12 = np.array(([matris[int(tw1[-1]),1],matris[int(tw1[-1]),2]]))
+    tw21 = np.array(([matris[int(tw2[0]),1] ,matris[int(tw2[0]) ,2]]))
+    tw22 = np.array(([matris[int(tw2[-1]),1],matris[int(tw2[-1]),2]]))
+    euclidean=np.zeros(4, dtype = object)
+    euclidean[0] = [np.linalg.norm(tw11 - tw21),int(tw1[0]),int(tw2[0])]
+    euclidean[1] = [np.linalg.norm(tw11 - tw22),int(tw1[0]),int(tw2[-1])]
+    euclidean[2] = [np.linalg.norm(tw12 - tw21),int(tw1[-1]),int(tw2[0])]
+    euclidean[3] = [np.linalg.norm(tw12 - tw22),int(tw1[-1]),int(tw2[-1])]
+    return min(euclidean)
+
+
+#Okunan dosyanın arraylara paylaşılması
 cities = read_data('Coords')
 id    = np.array(cities)[:, 0]
 x     = np.array(cities)[:, 1]
@@ -57,6 +72,7 @@ end   = np.array(cities)[:, 4]
 newcoloumn=[]
 temp=[]
 
+#datayı okunan zaman gruplarına göre gruplama işlemi. (Başlangıç- Bitiş zamanlarına göre)
 for row in cities:
    search = str(str(row[3]) + '-' + str(row[4]))
    index =temp.index(search) if search in temp else -1
@@ -67,39 +83,54 @@ for row in cities:
        newcoloumn.append(index)
 
 group=np.array(newcoloumn)
-
+#çizimde her grubu farklı renkle ifade edebilmek için renk kodları tanımlıyoruz.
 colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
+#okunup ayrı ayrı arraylara atanan bilgileri tek bir matris de birleştiriyoruz.
 matris = np.column_stack((id,x,y,start,end,group))
 #her zaman penceresinin toplam süresini tutar
 twd_size=np.max(group)+1
-
+#birleştirme aşanasında kullanmak üzere her bir grubun toplam tamamlanma süresini,
+# tamamlanma hedefini (Saat 8-10 arası 2 saat toplam 120dk gibi)
+# çizilen rotasını [1 2 34 22] 1 nolu id den başla 22 nolu id de bit gibi bilgileri tutmak için arraylar oluşturma kısmı
 time_window_durations  =np.zeros(twd_size, dtype = object)
+time_window_goal=np.zeros(twd_size, dtype = object)
+time_window_routes=np.zeros(twd_size, dtype = object)
 
-
-
+#her grup için ayrı ayrı yol çizdirme kısmı, yukarda oluşturduğumuz arrayleride dolduruyoruz. print sonuçlarından takip edilebilir.
 for i in range(len(temp)):
     indices = group == i
     data = matris[indices,:]
     distances = vectorized_haversine(data[:,1], data[:,2])
     path = tsp(distances)
     time=km_to_second(distances)
-    print(path)
+    print("Group:"+" "+str(i)+"  Time Window: "+str(int(data[1,3]))+"-"+str(int(data[1,4]))+"-"+str((data[1,4]-data[1,3])*60)+"  dk")
+    print("Yol sırası->"+str(path))
+    print("Id lere göre sırası->"+str(data[path,0]))
     time_window_durations[i]=path_duration(time,path,10)
-    print("Toplam süre:"+"  "+str(path_duration(time,path,10))+" dk")
+    time_window_goal[i]=(data[1,4]-data[1,3])*60
+    time_window_routes[i]=data[path,0]
+    print("Total duration:"+"  "+str(path_duration(time,path,10))+" dk")
 
     plt.plot(data[path, 1], data[path, 2], list(colors.keys())[i])
     for k, txt in enumerate(data[path, 0]):
         plt.annotate(int(txt), (data[path[k], 1], data[path[k], 2]))
 
-
+#Oluşturulan yolların çizdirilmesi
 plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolor='k')
 plt.show()
 
 
 #birleştirme öncesi zaman periyotlarını sıralayıp gruplama
 print(time_window_durations)
+print(time_window_goal)
+print(time_window_routes)
 tw_groups = np.column_stack((start,end,group))
 tw_order=np.lexsort((tw_groups[:,1],tw_groups[:,0]))
 tw_groups=np.unique(tw_groups[tw_order], axis=0)
 print(tw_groups)
 
+#ilk 2 grubun hangi noktalarından birleştirilebileceğini sorgulama kısmı. bu bilgileri birleştirme aşamasında kullanacağız.
+print("Grup 1-> "+str(time_window_routes[0]))
+print("Grup 2-> "+str(time_window_routes[1]))
+a=which_outer_points(time_window_routes[0],time_window_routes[1],matris)
+print("Grupların birleştirileceği noktalar -> "+str(a))
