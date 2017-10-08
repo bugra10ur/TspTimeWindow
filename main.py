@@ -3,6 +3,8 @@ from tsp_solver.greedy import solve_tsp as tsp
 import matplotlib.pyplot as plt
 from matplotlib import colors as mcolors
 from math import radians, cos, sin, asin, sqrt
+import haversine as hv
+import itertools as it
 
 
 
@@ -35,9 +37,17 @@ def vectorized_haversine(lat,lng):
 
 
 def km_to_second(matrix):
-    l=np.reshape(matrix, matrix.shape[0]*matrix.shape[1])
-    l=[x*3 if x <= 3 else x for x in l]
-    return np.reshape(l, (matrix.shape[0],matrix.shape[1]))
+    if np.isscalar(matrix) == True:
+        if float(matrix) <= 3:
+           return float(matrix) * 3
+
+        else:
+           return float(matrix)
+
+    else:
+        l=np.reshape(matrix, matrix.shape[0]*matrix.shape[1])
+        l=[x*3 if x <= 3 else x for x in l]
+        return np.reshape(l, (matrix.shape[0],matrix.shape[1]))
 
 
 def path_duration(time_matrix,path,delivery_time):
@@ -53,12 +63,28 @@ def which_outer_points(tw1,tw2,matris):
     tw12 = np.array(([matris[int(tw1[-1]),1],matris[int(tw1[-1]),2]]))
     tw21 = np.array(([matris[int(tw2[0]),1] ,matris[int(tw2[0]) ,2]]))
     tw22 = np.array(([matris[int(tw2[-1]),1],matris[int(tw2[-1]),2]]))
-    euclidean=np.zeros(4, dtype = object)
-    euclidean[0] = [np.linalg.norm(tw11 - tw21),int(tw1[0]),int(tw2[0])]
-    euclidean[1] = [np.linalg.norm(tw11 - tw22),int(tw1[0]),int(tw2[-1])]
-    euclidean[2] = [np.linalg.norm(tw12 - tw21),int(tw1[-1]),int(tw2[0])]
-    euclidean[3] = [np.linalg.norm(tw12 - tw22),int(tw1[-1]),int(tw2[-1])]
-    return min(euclidean)
+    distances=np.zeros(4, dtype = object)
+    distances[0] = [hv.haversine(tw11, tw21),int(tw1[0]),int(tw2[0])]
+    distances[1] = [hv.haversine(tw11, tw22),int(tw1[0]),int(tw2[-1])]
+    distances[2] = [hv.haversine(tw12, tw21),int(tw1[-1]),int(tw2[0])]
+    distances[3] = [hv.haversine(tw12, tw22),int(tw1[-1]),int(tw2[-1])]
+    print(distances)
+    return min(distances)
+
+def merge_groups(tw1,tw2,goals,durations,tw_groups,matris):
+    mergePoints = which_outer_points(tw1, tw2, matris)
+    #mergePoints'in ilk elemanı noktalar arasındaki km cinsinden uzaklığı dönüyordu, onu dk cinsine çeviriyoruz
+    mergePointsDuration=km_to_second(mergePoints[0])
+    #birleştirilecek noktalara göre rotayı sıralama kısmı Birleştirilecek nokta
+    # 1. grubun ilk elemanı ise 1.grup ters çevrilir,
+    # Birleştirilecek noktalardan 2. gruba ait olan nokta   2. grubun son elemanı ise 2. grup ters çevrilir
+    if mergePoints[1] == tw1[0]:
+        tw1=tw1[::-1]
+    if mergePoints[2] != tw2[0]:
+        tw2=tw2[::-1]
+    merged_routes = list(it.chain(tw1, tw2))
+    merged_duration=durations[0]+durations[1]+mergePointsDuration
+    return merged_routes,merged_duration
 
 
 #Okunan dosyanın arraylara paylaşılması
@@ -117,20 +143,26 @@ for i in range(len(temp)):
 
 #Oluşturulan yolların çizdirilmesi
 plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolor='k')
-plt.show()
+#plt.show()
 
 
 #birleştirme öncesi zaman periyotlarını sıralayıp gruplama
-print(time_window_durations)
-print(time_window_goal)
-print(time_window_routes)
+
 tw_groups = np.column_stack((start,end,group))
 tw_order=np.lexsort((tw_groups[:,1],tw_groups[:,0]))
 tw_groups=np.unique(tw_groups[tw_order], axis=0)
+
+print(time_window_durations)
+print(time_window_goal)
+print(time_window_routes)
 print(tw_groups)
 
 #ilk 2 grubun hangi noktalarından birleştirilebileceğini sorgulama kısmı. bu bilgileri birleştirme aşamasında kullanacağız.
 print("Grup 1-> "+str(time_window_routes[0]))
 print("Grup 2-> "+str(time_window_routes[1]))
-a=which_outer_points(time_window_routes[0],time_window_routes[1],matris)
-print("Grupların birleştirileceği noktalar -> "+str(a))
+
+a= merge_groups(time_window_routes[0],time_window_routes[1],time_window_goal[0:2],time_window_durations[0:2],tw_groups,matris)
+print(a)
+#a=which_outer_points(time_window_routes[0],time_window_routes[1],matris)
+print("Grupların birleştirilmesi -> "+str(a))
+
