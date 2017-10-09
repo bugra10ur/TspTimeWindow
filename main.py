@@ -68,10 +68,12 @@ def which_outer_points(tw1,tw2,matris):
     distances[1] = [hv.haversine(tw11, tw22),int(tw1[0]),int(tw2[-1])]
     distances[2] = [hv.haversine(tw12, tw21),int(tw1[-1]),int(tw2[0])]
     distances[3] = [hv.haversine(tw12, tw22),int(tw1[-1]),int(tw2[-1])]
-    print(distances)
+    print("En yakın uç noktalar->"+str(min(distances)))
     return min(distances)
 
-def merge_groups(tw1,tw2,goals,durations,tw_groups,matris):
+def merge_groups(tw1,tw2,durations,matris):
+    print("Grup 1-> " + str(tw1))
+    print("Grup 2-> " + str(tw2))
     mergePoints = which_outer_points(tw1, tw2, matris)
     #mergePoints'in ilk elemanı noktalar arasındaki km cinsinden uzaklığı dönüyordu, onu dk cinsine çeviriyoruz
     mergePointsDuration=km_to_second(mergePoints[0])
@@ -84,6 +86,7 @@ def merge_groups(tw1,tw2,goals,durations,tw_groups,matris):
         tw2=tw2[::-1]
     merged_routes = list(it.chain(tw1, tw2))
     merged_duration=durations[0]+durations[1]+mergePointsDuration
+    print("Grupların birleştirilmesi ->"+str(merged_routes))
     return merged_routes,merged_duration
 
 
@@ -137,13 +140,14 @@ for i in range(len(temp)):
     time_window_routes[i]=data[path,0]
     print("Total duration:"+"  "+str(path_duration(time,path,10))+" dk")
 
+    f = plt.figure(1)
     plt.plot(data[path, 1], data[path, 2], list(colors.keys())[i])
     for k, txt in enumerate(data[path, 0]):
         plt.annotate(int(txt), (data[path[k], 1], data[path[k], 2]))
 
 #Oluşturulan yolların çizdirilmesi
 plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolor='k')
-#plt.show()
+f.show()
 
 
 #birleştirme öncesi zaman periyotlarını sıralayıp gruplama
@@ -152,17 +156,23 @@ tw_groups = np.column_stack((start,end,group))
 tw_order=np.lexsort((tw_groups[:,1],tw_groups[:,0]))
 tw_groups=np.unique(tw_groups[tw_order], axis=0)
 
-print(time_window_durations)
-print(time_window_goal)
-print(time_window_routes)
-print(tw_groups)
+#print(time_window_durations)
+#print(time_window_goal)
+#print(time_window_routes)
+#print(tw_groups)
 
 #ilk 2 grubun hangi noktalarından birleştirilebileceğini sorgulama kısmı. bu bilgileri birleştirme aşamasında kullanacağız.
-print("Grup 1-> "+str(time_window_routes[0]))
-print("Grup 2-> "+str(time_window_routes[1]))
 
-a= merge_groups(time_window_routes[0],time_window_routes[1],time_window_goal[0:2],time_window_durations[0:2],tw_groups,matris)
-print(a)
+
+a= merge_groups(time_window_routes[0],time_window_routes[1],time_window_durations[0:2],matris)
 #a=which_outer_points(time_window_routes[0],time_window_routes[1],matris)
 print("Grupların birleştirilmesi -> "+str(a))
 
+#Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
+mergedGroups=[time_window_routes[0],0]
+durations=time_window_durations[0:2]
+print(range(len(tw_groups)-1))
+for i in range(len(tw_groups)-1):
+    indices = i
+    mergedGroups = merge_groups(mergedGroups[0],time_window_routes[i+1],durations,matris)
+    durations=[time_window_durations[i+1],mergedGroups[1]]
