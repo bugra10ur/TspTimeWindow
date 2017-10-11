@@ -2,6 +2,7 @@ import numpy as np
 from tsp_solver.greedy import solve_tsp as tsp
 import matplotlib.pyplot as plt
 from matplotlib import colors as mcolors
+from random import randint
 from math import radians, cos, sin, asin, sqrt
 import haversine as hv
 import itertools as it
@@ -90,6 +91,36 @@ def merge_groups(tw1,tw2,durations,matris):
     return merged_routes,merged_duration
 
 
+def combine_merge_groups(twr,twd,tw_groups,matris):
+    mergedGroups=[twr[0],0]
+    durations=twd[0:2]
+    print(range(len(tw_groups)-1))
+    for i in range(len(tw_groups)-1):
+        indices = i
+        mergedGroups = merge_groups(mergedGroups[0],twr[i+1],durations,matris)
+        durations=[twd[i+1],mergedGroups[1]]
+    return mergedGroups
+
+
+def plot_route(mergedIds,matris):
+    results = np.array(list(map(int, mergedIds[0])))
+    x = []
+    y = []
+    ids = []
+    for i in range(len(matris)):
+        id = np.where(matris[:, 0] == results[i])
+        ids.append(results[i])
+        x.append(matris[id, 1][0][0])
+        y.append(matris[id, 2][0][0])
+
+    g = plt.figure(randint(100, 1000))
+    plt.plot(x, y)
+    #id  leri  grafik  üzerinde görüntüleme  kısmı
+    for t, txt in enumerate(ids):
+        plt.annotate(int(txt), (x[t], y[t]))
+    plt.show()
+
+
 #Okunan dosyanın arraylara paylaşılması
 cities = read_data('Coords')
 id    = np.array(cities)[:, 0]
@@ -146,9 +177,8 @@ for i in range(len(temp)):
         plt.annotate(int(txt), (data[path[k], 1], data[path[k], 2]))
 
 #Oluşturulan yolların çizdirilmesi
-plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolor='k')
-f.show()
-
+#plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolor='k')
+#f.show()
 
 #birleştirme öncesi zaman periyotlarını sıralayıp gruplama
 
@@ -161,18 +191,16 @@ tw_groups=np.unique(tw_groups[tw_order], axis=0)
 #print(time_window_routes)
 #print(tw_groups)
 
-#ilk 2 grubun hangi noktalarından birleştirilebileceğini sorgulama kısmı. bu bilgileri birleştirme aşamasında kullanacağız.
-
-
-a= merge_groups(time_window_routes[0],time_window_routes[1],time_window_durations[0:2],matris)
-#a=which_outer_points(time_window_routes[0],time_window_routes[1],matris)
-print("Grupların birleştirilmesi -> "+str(a))
-
 #Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
-mergedGroups=[time_window_routes[0],0]
-durations=time_window_durations[0:2]
-print(range(len(tw_groups)-1))
-for i in range(len(tw_groups)-1):
-    indices = i
-    mergedGroups = merge_groups(mergedGroups[0],time_window_routes[i+1],durations,matris)
-    durations=[time_window_durations[i+1],mergedGroups[1]]
+#mergedGroups=[time_window_routes[0],0]
+#durations=time_window_durations[0:2]
+#print(range(len(tw_groups)-1))
+#for i in range(len(tw_groups)-1):
+    #indices = i
+    #mergedGroups = merge_groups(mergedGroups[0],time_window_routes[i+1],durations,matris)
+    #durations=[time_window_durations[i+1],mergedGroups[1]]
+
+mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
+plot_route(mergedGroups,matris)
+
+
