@@ -81,10 +81,10 @@ def merge_groups(tw1,tw2,durations,matris):
     #birleştirilecek noktalara göre rotayı sıralama kısmı Birleştirilecek nokta
     # 1. grubun ilk elemanı ise 1.grup ters çevrilir,
     # Birleştirilecek noktalardan 2. gruba ait olan nokta   2. grubun son elemanı ise 2. grup ters çevrilir
-    if mergePoints[1] == tw1[0]:
-        tw1=tw1[::-1]
-    if mergePoints[2] != tw2[0]:
-        tw2=tw2[::-1]
+   # if mergePoints[1] == tw1[0]:
+      #  tw1=tw1[::-1]
+  #  if mergePoints[2] != tw2[0]:
+     #   tw2=tw2[::-1]
     merged_routes = list(it.chain(tw1, tw2))
     merged_duration=durations[0]+durations[1]+mergePointsDuration
     print("Grupların birleştirilmesi ->"+str(merged_routes))
@@ -121,6 +121,43 @@ def plot_route(mergedIds,matris):
     plt.show()
 
 
+def find_index(ids,matrix):
+    results = np.array(list(map(int, ids)))
+    idIndex=[]
+    for i in range(len(results)):
+        id = np.where(matrix[:, 0] == results[i])[0][0]
+        idIndex.append(id)
+    return idIndex
+
+
+def time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris):
+    print("len->"+str(len(time_window_durations)))
+    time_window_removed =[]
+    for i in range(len(time_window_durations)):
+        print("twg->"+str(i)+"-"+str(time_window_durations[i]))
+        #küçük zaman penceresi içerisindeki noktalar yeterli değil ise eleme yapılır
+        goal=time_window_goal[i]
+        duration= time_window_durations[i]
+        route=time_window_routes[i]
+        while (goal < duration):
+            if len(list(route)) == 1:
+                i=i+1
+            else:
+                newRoute= list(route)
+                removedId=newRoute[-1]
+                time_window_removed.append(removedId)
+                del newRoute[-1]
+                data = matris[find_index(newRoute,matris), :]
+                distances = vectorized_haversine(data[:, 1], data[:, 2])
+                path = tsp(distances)
+                time = km_to_second(distances)
+                duration=path_duration(time,path,10)
+                route=data[path, 0]
+                print("Yeni Yol sırası->" + str(path))
+                print("Id lere göre Yeni yol sırası->" + str(data[path, 0]))
+                print("Çıkartılan noktalar->"+str(time_window_removed))
+    return time_window_removed
+
 #Okunan dosyanın arraylara paylaşılması
 cities = read_data('Coords')
 id    = np.array(cities)[:, 0]
@@ -156,6 +193,7 @@ time_window_durations  =np.zeros(twd_size, dtype = object)
 time_window_goal=np.zeros(twd_size, dtype = object)
 time_window_routes=np.zeros(twd_size, dtype = object)
 
+
 #her grup için ayrı ayrı yol çizdirme kısmı, yukarda oluşturduğumuz arrayleride dolduruyoruz. print sonuçlarından takip edilebilir.
 for i in range(len(temp)):
     indices = group == i
@@ -172,7 +210,7 @@ for i in range(len(temp)):
     print("Total duration:"+"  "+str(path_duration(time,path,10))+" dk")
 
     f = plt.figure(1)
-    plt.plot(data[path, 1], data[path, 2], list(colors.keys())[i])
+    #plt.plot(data[path, 1], data[path, 2], list(colors.keys())[i])
     for k, txt in enumerate(data[path, 0]):
         plt.annotate(int(txt), (data[path[k], 1], data[path[k], 2]))
 
@@ -186,11 +224,13 @@ tw_groups = np.column_stack((start,end,group))
 tw_order=np.lexsort((tw_groups[:,1],tw_groups[:,0]))
 tw_groups=np.unique(tw_groups[tw_order], axis=0)
 
-#print(time_window_durations)
-#print(time_window_goal)
-#print(time_window_routes)
-#print(tw_groups)
+print(time_window_durations)
+print(time_window_goal)
+print(time_window_routes)
+print(tw_groups)
 
+a=time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris)
+print(a)
 #Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
 #mergedGroups=[time_window_routes[0],0]
 #durations=time_window_durations[0:2]
@@ -200,7 +240,7 @@ tw_groups=np.unique(tw_groups[tw_order], axis=0)
     #mergedGroups = merge_groups(mergedGroups[0],time_window_routes[i+1],durations,matris)
     #durations=[time_window_durations[i+1],mergedGroups[1]]
 
-mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
-plot_route(mergedGroups,matris)
+#mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
+#plot_route(mergedGroups,matris)
 
 
