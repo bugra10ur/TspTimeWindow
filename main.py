@@ -25,7 +25,6 @@ def read_data(filename):
         for line in f:
             city = list(map(float, line.split()[0:]))
             cities.append((city[0], city[1],city[2],city[3],city[4],city[5]))
-
     return cities
 
 def vectorized_haversine(lat,lng):
@@ -41,20 +40,19 @@ def km_to_second(matrix):
     if np.isscalar(matrix) == True:
         if float(matrix) <= 3:
            return float(matrix) * 3
-
         else:
            return float(matrix)
-
     else:
         l=np.reshape(matrix, matrix.shape[0]*matrix.shape[1])
         l=[x*3 if x <= 3 else x for x in l]
         return np.reshape(l, (matrix.shape[0],matrix.shape[1]))
 
 
-def path_duration(time_matrix,path,delivery_time):
-    duration=0
+def path_duration(time_matrix,path,ids,matris):
+    waitingTimes=getElementByID(matris, ids, 0, 5)
+    duration = sum(waitingTimes)
     for i in range(len(path)-1):
-        duration=duration+delivery_time+time_matrix[path[i],path[i+1]]
+        duration=duration+time_matrix[path[i],path[i+1]]
     return duration
 
 
@@ -129,6 +127,15 @@ def find_index(ids,matrix):
         idIndex.append(id)
     return idIndex
 
+def getElementByID(matrix,searched,x,y):
+    # parametre olarak aldığı matriste x indisi değerlerinin sahip olduğu y değerlerini döndürür,
+    # *** searched olarak verilen değerlerin ve matrisin tekil olduğu varsayılmıştır
+    results = []
+    for i in range(len(searched)):
+        indice = np.where(matrix[:, x] == searched[i])[0]
+        temp = matrix[indice, y]
+        results.append(temp)
+    return results
 
 def time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris):
     print("len->"+str(len(time_window_durations)))
@@ -151,7 +158,7 @@ def time_window_elemination(time_window_durations,time_window_goal,time_window_r
                 distances = vectorized_haversine(data[:, 1], data[:, 2])
                 path = tsp(distances)
                 time = km_to_second(distances)
-                duration=path_duration(time,path,10)
+                duration=path_duration(time,path,data[path,0],matris)
                 route=data[path, 0]
                 print("Yeni Yol sırası->" + str(path))
                 print("Id lere göre Yeni yol sırası->" + str(data[path, 0]))
@@ -165,6 +172,7 @@ x     = np.array(cities)[:, 1]
 y     = np.array(cities)[:, 2]
 start = np.array(cities)[:, 3]
 end   = np.array(cities)[:, 4]
+waiting   = np.array(cities)[:, 5]
 
 newcoloumn=[]
 temp=[]
@@ -183,7 +191,7 @@ group=np.array(newcoloumn)
 #çizimde her grubu farklı renkle ifade edebilmek için renk kodları tanımlıyoruz.
 colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 #okunup ayrı ayrı arraylara atanan bilgileri tek bir matris de birleştiriyoruz.
-matris = np.column_stack((id,x,y,start,end,group))
+matris = np.column_stack((id,x,y,start,end,waiting,group))
 #her zaman penceresinin toplam süresini tutar
 twd_size=np.max(group)+1
 #birleştirme aşanasında kullanmak üzere her bir grubun toplam tamamlanma süresini,
@@ -204,19 +212,19 @@ for i in range(len(temp)):
     print("Group:"+" "+str(i)+"  Time Window: "+str(int(data[1,3]))+"-"+str(int(data[1,4]))+"-"+str((data[1,4]-data[1,3])*60)+"  dk")
     print("Yol sırası->"+str(path))
     print("Id lere göre sırası->"+str(data[path,0]))
-    time_window_durations[i]=path_duration(time,path,10)
+    totalDuration=time_window_durations[i]=path_duration(time,path,data[path,0],matris)
     time_window_goal[i]=(data[1,4]-data[1,3])*60
     time_window_routes[i]=data[path,0]
-    print("Total duration:"+"  "+str(path_duration(time,path,10))+" dk")
+    print("Total duration:"+"  "+str(totalDuration)+" dk")
 
     f = plt.figure(1)
-    #plt.plot(data[path, 1], data[path, 2], list(colors.keys())[i])
+    plt.plot(data[path, 1], data[path, 2], list(colors.keys())[i])
     for k, txt in enumerate(data[path, 0]):
         plt.annotate(int(txt), (data[path[k], 1], data[path[k], 2]))
 
 #Oluşturulan yolların çizdirilmesi
-#plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolor='k')
-#f.show()
+plt.scatter(matris[:, 1], matris[:, 2], c=matris[:,5], cmap=plt.cm.Set1,edgecolor='k')
+f.show()
 
 #birleştirme öncesi zaman periyotlarını sıralayıp gruplama
 
@@ -231,6 +239,8 @@ print(tw_groups)
 
 a=time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris)
 print(a)
+mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
+plot_route(mergedGroups,matris)
 #Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
 #mergedGroups=[time_window_routes[0],0]
 #durations=time_window_durations[0:2]
@@ -240,7 +250,6 @@ print(a)
     #mergedGroups = merge_groups(mergedGroups[0],time_window_routes[i+1],durations,matris)
     #durations=[time_window_durations[i+1],mergedGroups[1]]
 
-#mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
-#plot_route(mergedGroups,matris)
+
 
 
