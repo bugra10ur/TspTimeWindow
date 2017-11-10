@@ -17,15 +17,8 @@ def make_dist_matrix(x, y):
     return np.sqrt( (xx - xx.T)**2 + (yy - yy.T)**2 )
 
 
-def read_data(filename):
-    cities = []
-
-    path = 'C:/Users/Bugra/Desktop/ntnu-som-master/ntnu-som-master/assets/{}.txt'.format(filename)
-    with open(path, 'r') as f:
-        for line in f:
-            city = list(map(float, line.split()[0:]))
-            cities.append((city[0], city[1],city[2],city[3],city[4],city[5]))
-    return cities
+def read_data(filePath, delimiter=' '):
+    return np.genfromtxt(filePath, delimiter=delimiter)
 
 
 def vectorized_haversine(lat,lng):
@@ -193,15 +186,8 @@ def compute_distances_no_loops(dataset,x,y,idIndex):
     dists=np.column_stack((ids,sumDifs))
     sorted=dists[np.argsort(dists[:,1])]
     return sorted
-#Okunan dosyanın arraylara paylaşılması
-cities = read_data('Coords')
-id    = np.array(cities)[:, 0]
-x     = np.array(cities)[:, 1]
-y     = np.array(cities)[:, 2]
-start = np.array(cities)[:, 3]
-end   = np.array(cities)[:, 4]
-waiting   = np.array(cities)[:, 5]
-
+#Dosyayı oku  id,x,y,start,end,waitingTime
+cities = read_data('Coords.txt')
 newcoloumn=[]
 temp=[]
 
@@ -219,7 +205,7 @@ group=np.array(newcoloumn)
 #çizimde her grubu farklı renkle ifade edebilmek için renk kodları tanımlıyoruz.
 colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
 #okunup ayrı ayrı arraylara atanan bilgileri tek bir matris de birleştiriyoruz.
-matris = np.column_stack((id,x,y,start,end,waiting,group))
+matris = cities#np.column_stack((id,x,y,start,end,waiting,group))
 #her zaman penceresinin toplam süresini tutar
 twd_size=np.max(group)+1
 #birleştirme aşanasında kullanmak üzere her bir grubun toplam tamamlanma süresini,
@@ -256,7 +242,7 @@ f.show()
 
 #birleştirme öncesi zaman periyotlarını sıralayıp gruplama
 
-tw_groups = np.column_stack((start,end,group))
+tw_groups = np.column_stack((matris[:,3],matris[:,4],group))
 tw_order=np.lexsort((tw_groups[:,1],tw_groups[:,0]))
 tw_groups=np.unique(tw_groups[tw_order], axis=0)
 
@@ -268,8 +254,8 @@ print(tw_groups)
 a=time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris)
 print(a)
 plt.show()
-#mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
-#plot_route(mergedGroups,matris)
+mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
+plot_route(mergedGroups,matris)
 #Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
 #mergedGroups=[time_window_routes[0],0]
 #durations=time_window_durations[0:2]
