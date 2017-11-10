@@ -27,6 +27,7 @@ def read_data(filename):
             cities.append((city[0], city[1],city[2],city[3],city[4],city[5]))
     return cities
 
+
 def vectorized_haversine(lat,lng):
     lat = np.deg2rad(lat)
     lng = np.deg2rad(lng)
@@ -69,6 +70,7 @@ def which_outer_points(tw1,tw2,matris):
     distances[3] = [hv.haversine(tw12, tw22),int(tw1[-1]),int(tw2[-1])]
     print("En yakın uç noktalar->"+str(min(distances)))
     return min(distances)
+
 
 def merge_groups(tw1,tw2,durations,matris):
     print("Grup 1-> " + str(tw1))
@@ -127,6 +129,7 @@ def find_index(ids,matrix):
         idIndex.append(id)
     return idIndex
 
+
 def getElementByID(matrix,searched,x,y):
     # parametre olarak aldığı matriste x indisi değerlerinin sahip olduğu y değerlerini döndürür,
     # *** searched olarak verilen değerlerin ve matrisin tekil olduğu varsayılmıştır
@@ -136,6 +139,7 @@ def getElementByID(matrix,searched,x,y):
         temp = matrix[indice, y]
         results.append(temp)
     return results
+
 
 def time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris):
     print("len->"+str(len(time_window_durations)))
@@ -165,6 +169,30 @@ def time_window_elemination(time_window_durations,time_window_goal,time_window_r
                 print("Çıkartılan noktalar->"+str(time_window_removed))
     return time_window_removed
 
+
+def estimate_Mean_2D(dataset,x,y):
+    #Parametre olarak; Data ve x,y bilgilerini içeren kolon indexlerini alır,
+    #Çıktı olarak datadaki tüm noktaların ortalama x,y bilgilerini döner...
+    data=dataset[:, [x, y]]
+    mu = np.mean(data, axis=0)
+    return mu
+
+
+def compute_distances_no_loops(dataset,x,y,idIndex):
+    #Parametre olarak sıralacak data,datanın x,y ve id kolon index bilgilerini alır..
+    #çıktı olarak id,x,y şeklinde girdi olarak aldığı datayı ortalama noktasına en yakından en uzak olacak şekilde sıralanmış halini döner...
+    mu=estimate_Mean_2D(dataset,x,y)
+    X=dataset[:, [x, y]]
+    ids=dataset[:,idIndex]
+    difference =mu-X
+    differenceRoot=np.square(difference)
+    sumDifs=differenceRoot.sum(axis=1, keepdims=True)
+    #dists=((ids,sumDifs[:,0]))
+    #dists=np.concatenate([ids,sumDifs])
+    print(ids)
+    dists=np.column_stack((ids,sumDifs))
+    sorted=dists[np.argsort(dists[:,1])]
+    return sorted
 #Okunan dosyanın arraylara paylaşılması
 cities = read_data('Coords')
 id    = np.array(cities)[:, 0]
@@ -239,8 +267,9 @@ print(tw_groups)
 
 a=time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris)
 print(a)
-mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
-plot_route(mergedGroups,matris)
+plt.show()
+#mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
+#plot_route(mergedGroups,matris)
 #Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
 #mergedGroups=[time_window_routes[0],0]
 #durations=time_window_durations[0:2]
