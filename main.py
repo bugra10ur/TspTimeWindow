@@ -148,9 +148,13 @@ def time_window_elemination(time_window_durations,time_window_goal,time_window_r
                 i=i+1
             else:
                 newRoute= list(route)
-                removedId=newRoute[-1]
+                #remove victom
+                data = matris[find_index(newRoute, matris), :]
+                orderedDists=order_distances_around_avg(data,1,2,0)
+                #Ortalama noktaya en uzak nokta listenin sonunda -1 ile Noktanın id sine ulaşılıyor.
+                removedId=orderedDists[-1][0]
+                newRoute.remove(removedId)
                 time_window_removed.append(removedId)
-                del newRoute[-1]
                 data = matris[find_index(newRoute,matris), :]
                 distances = vectorized_haversine(data[:, 1], data[:, 2])
                 path = tsp(distances)
@@ -171,7 +175,7 @@ def estimate_Mean_2D(dataset,x,y):
     return mu
 
 
-def compute_distances_no_loops(dataset,x,y,idIndex):
+def order_distances_around_avg(dataset,x,y,idIndex):
     #Parametre olarak sıralacak data,datanın x,y ve id kolon index bilgilerini alır..
     #çıktı olarak id,x,y şeklinde girdi olarak aldığı datayı ortalama noktasına en yakından en uzak olacak şekilde sıralanmış halini döner...
     mu=estimate_Mean_2D(dataset,x,y)
@@ -186,6 +190,8 @@ def compute_distances_no_loops(dataset,x,y,idIndex):
     dists=np.column_stack((ids,sumDifs))
     sorted=dists[np.argsort(dists[:,1])]
     return sorted
+
+
 #Dosyayı oku  id,x,y,start,end,waitingTime
 cities = read_data('Coords.txt')
 newcoloumn=[]
