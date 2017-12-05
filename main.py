@@ -95,12 +95,12 @@ def combine_merge_groups(twr,twd,tw_groups,matris):
     return mergedGroups
 
 
-def plot_route(mergedIds,matris):
+def plot_route(mergedIds,matris,removedIds):
     results = np.array(list(map(int, mergedIds[0])))
     x = []
     y = []
     ids = []
-    for i in range(len(matris)):
+    for i in range(len(matris)-len(removedIds)):
         id = np.where(matris[:, 0] == results[i])
         ids.append(results[i])
         x.append(matris[id, 1][0][0])
@@ -137,6 +137,10 @@ def getElementByID(matrix,searched,x,y):
 def time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris):
     print("len->"+str(len(time_window_durations)))
     time_window_removed =[]
+    duration_new=[]
+    duration_new=time_window_durations
+    routes_new=[]
+    routes_new=time_window_routes
     for i in range(len(time_window_durations)):
         print("twg->"+str(i)+"-"+str(time_window_durations[i]))
         #küçük zaman penceresi içerisindeki noktalar yeterli değil ise eleme yapılır
@@ -161,10 +165,12 @@ def time_window_elemination(time_window_durations,time_window_goal,time_window_r
                 time = km_to_second(distances)
                 duration=path_duration(time,path,data[path,0],matris)
                 route=data[path, 0]
+                routes_new[i] = route
+                duration_new[i]=duration
                 print("Yeni Yol sırası->" + str(path))
                 print("Id lere göre Yeni yol sırası->" + str(data[path, 0]))
                 print("Çıkartılan noktalar->"+str(time_window_removed))
-    return time_window_removed
+    return time_window_removed,routes_new,duration_new
 
 
 def estimate_Mean_2D(dataset,x,y):
@@ -192,32 +198,37 @@ def order_distances_around_avg(dataset,x,y,idIndex):
     return sorted
 
 
+def groupBy_time_window(matrix):
+    # dataya okunan zaman gruplarına göre grup atama işlemi. (Başlangıç- Bitiş zamanlarına göre)
+    # **datanın başlangıç bitiş saatlerine göre sıralı olduğu varsayılmıştır.
+    newcoloumn = []
+    temp = []
+    for row in matrix:
+        search = str(str(row[3]) + '-' + str(row[4]))
+        index = temp.index(search) if search in temp else -1
+        if index == -1:
+            newcoloumn.append(len(temp))
+            temp.append(search)
+        else:
+            newcoloumn.append(index)
+    return np.array(newcoloumn),temp
+
+
 #Dosyayı oku  id,x,y,start,end,waitingTime
 cities = read_data('Coords.txt')
 newcoloumn=[]
 temp=[]
+[group,temp]=groupBy_time_window(cities)
 
-#datayı okunan zaman gruplarına göre gruplama işlemi. (Başlangıç- Bitiş zamanlarına göre)
-for row in cities:
-   search = str(str(row[3]) + '-' + str(row[4]))
-   index =temp.index(search) if search in temp else -1
-   if index == -1:
-       newcoloumn.append(len(temp))
-       temp.append(search)
-   else:
-       newcoloumn.append(index)
-
-group=np.array(newcoloumn)
 #çizimde her grubu farklı renkle ifade edebilmek için renk kodları tanımlıyoruz.
 colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
-#okunup ayrı ayrı arraylara atanan bilgileri tek bir matris de birleştiriyoruz.
-matris = cities#np.column_stack((id,x,y,start,end,waiting,group))
+matris = cities
 #her zaman penceresinin toplam süresini tutar
 twd_size=np.max(group)+1
 #birleştirme aşanasında kullanmak üzere her bir grubun toplam tamamlanma süresini,
 # tamamlanma hedefini (Saat 8-10 arası 2 saat toplam 120dk gibi)
 # çizilen rotasını [1 2 34 22] 1 nolu id den başla 22 nolu id de bit gibi bilgileri tutmak için arraylar oluşturma kısmı
-time_window_durations  =np.zeros(twd_size, dtype = object)
+time_window_durations =np.zeros(twd_size, dtype = object)
 time_window_goal=np.zeros(twd_size, dtype = object)
 time_window_routes=np.zeros(twd_size, dtype = object)
 
@@ -252,16 +263,21 @@ tw_groups = np.column_stack((matris[:,3],matris[:,4],group))
 tw_order=np.lexsort((tw_groups[:,1],tw_groups[:,0]))
 tw_groups=np.unique(tw_groups[tw_order], axis=0)
 
+print("-----İlk eleme öncesi-------")
 print(time_window_durations)
-print(time_window_goal)
 print(time_window_routes)
-print(tw_groups)
+print("----------------------------")
 
-a=time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris)
-print(a)
+[removedIds,routes_new,durations_new]=time_window_elemination(time_window_durations,time_window_goal,time_window_routes,matris)
+
+print("-----İlk eleme sonrası-------")
+print(durations_new)
+print(routes_new)
+print("----------------------------")
 plt.show()
-mergedGroups=combine_merge_groups(time_window_routes,time_window_durations,tw_groups,matris)
-plot_route(mergedGroups,matris)
+mergedGroups=combine_merge_groups(routes_new,durations_new,tw_groups,matris)
+plot_route(mergedGroups,matris,removedIds)
+
 #Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
 #mergedGroups=[time_window_routes[0],0]
 #durations=time_window_durations[0:2]
