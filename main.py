@@ -74,10 +74,10 @@ def merge_groups(tw1,tw2,durations,matris):
     #birleştirilecek noktalara göre rotayı sıralama kısmı Birleştirilecek nokta
     # 1. grubun ilk elemanı ise 1.grup ters çevrilir,
     # Birleştirilecek noktalardan 2. gruba ait olan nokta   2. grubun son elemanı ise 2. grup ters çevrilir
-   # if mergePoints[1] == tw1[0]:
-      #  tw1=tw1[::-1]
-  #  if mergePoints[2] != tw2[0]:
-     #   tw2=tw2[::-1]
+    if mergePoints[1] == tw1[0]:
+       tw1=tw1[::-1]
+    if mergePoints[2] != tw2[0]:
+       tw2=tw2[::-1]
     merged_routes = list(it.chain(tw1, tw2))
     merged_duration=durations[0]+durations[1]+mergePointsDuration
     print("Grupların birleştirilmesi ->"+str(merged_routes))
@@ -91,6 +91,40 @@ def combine_merge_groups(twr,twd,tw_groups,matris):
     for i in range(len(tw_groups)-1):
         indices = i
         mergedGroups = merge_groups(mergedGroups[0],twr[i+1],durations,matris)
+        durations=[twd[i+1],mergedGroups[1]]
+    return mergedGroups
+
+
+def ordered_outer_points(tw1,tw2,matris):
+    tw12 = np.array(([matris[int(tw1[-1]), 1], matris[int(tw1[-1]), 2]]))
+    tw21 = np.array(([matris[int(tw2[0]), 1], matris[int(tw2[0]), 2]]))
+    distances = np.zeros(1, dtype=object)
+    distances = [hv.haversine(tw12, tw21), int(tw1[-1]), int(tw2[0])]
+
+    print("Ardışıl uç noktalar->" + str(distances))
+    return distances
+
+
+def ordered_merge_groups(tw1,tw2,durations,matris):
+    print("Grup 1-> " + str(tw1))
+    print("Grup 2-> " + str(tw2))
+    mergePoints = ordered_outer_points(tw1, tw2, matris)
+    #mergePoints'in ilk elemanı noktalar arasındaki km cinsinden uzaklığı dönüyordu, onu dk cinsine çeviriyoruz
+    mergePointsDuration=km_to_second(mergePoints[0])
+    merged_routes = list(it.chain(tw1, tw2))
+    merged_duration=durations[0]+durations[1]+mergePointsDuration
+    print("Grupların ardışıl birleştirilmesi ->"+str(merged_routes))
+    return merged_routes,merged_duration
+
+#Ardışık zaman periyotları arasında geçen süre kontrol edilmiyor.
+#Eğer yeterli değilse elenecek noktanın belirlenmesi ve toplam sürenin hesaplanması gerekli...
+def combine_ordered_merge_groups(twr,twd,tw_groups,matris):
+    mergedGroups=[twr[0],0]
+    durations=twd[0:2]
+    print(range(len(tw_groups)-1))
+    for i in range(len(tw_groups)-1):
+        indices = i
+        mergedGroups = ordered_merge_groups(mergedGroups[0],twr[i+1],durations,matris)
         durations=[twd[i+1],mergedGroups[1]]
     return mergedGroups
 
@@ -277,6 +311,8 @@ print("----------------------------")
 plt.show()
 mergedGroups=combine_merge_groups(routes_new,durations_new,tw_groups,matris)
 plot_route(mergedGroups,matris,removedIds)
+orderedMergedGroups=combine_ordered_merge_groups(routes_new,durations_new,tw_groups,matris)
+plot_route(orderedMergedGroups,matris,removedIds)
 
 #Zaman grubu sayısı kadar dör (bizim örnek için 8)  ilklendirme olarak ilk zaman grubunu atıyoruz
 #mergedGroups=[time_window_routes[0],0]
